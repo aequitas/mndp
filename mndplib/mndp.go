@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -22,10 +23,50 @@ const (
 	mndpInterfaceName = 16
 )
 
+// MNDPResponse is a struct with all relevant fields from a response
+type MNDPResponse struct {
+	Src        string
+	MACAddr    string
+	Identity   string
+	Version    string
+	Platform   string
+	Uptime     string
+	SoftwareID string
+	Board      string
+	Unpack     string
+	IPv6Addr   string
+	Interface  string
+}
+
 type mndpTLV struct {
 	typeTag uint16
 	length  uint16
 	value   []byte
+}
+
+// IsResponse tells if a MNDPMessage is a response
+func (msg *MNDPMessage) IsResponse() bool {
+	if len(msg.tlvs) > 2 {
+		return true
+	}
+	return false
+}
+
+// Unpack turns a MNDP message into a MNDPResponse
+func (msg *MNDPMessage) Unpack() MNDPResponse {
+	return MNDPResponse{
+		msg.src,
+		strings.Split(msg.tlvs[0].String(), " ")[1],
+		strings.Split(msg.tlvs[1].String(), " ")[1],
+		strings.Split(msg.tlvs[2].String(), " ")[1],
+		strings.Split(msg.tlvs[3].String(), " ")[1],
+		strings.Split(msg.tlvs[4].String(), " ")[1],
+		strings.Split(msg.tlvs[5].String(), " ")[1],
+		strings.Split(msg.tlvs[6].String(), " ")[1],
+		strings.Split(msg.tlvs[7].String(), " ")[1],
+		strings.Split(msg.tlvs[8].String(), " ")[1],
+		strings.Split(msg.tlvs[9].String(), " ")[1],
+	}
 }
 
 // MNDPMessage ...
