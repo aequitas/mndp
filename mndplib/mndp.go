@@ -25,16 +25,16 @@ const (
 
 // MNDPResponse is a struct with all relevant fields from a response
 type MNDPResponse struct {
-	Src        string
-	MACAddr    string
+	Src        net.IP
+	MACAddr    net.HardwareAddr
 	Identity   string
 	Version    string
 	Platform   string
-	Uptime     string
+	Uptime     time.Duration
 	SoftwareID string
 	Board      string
 	Unpack     string
-	IPv6Addr   string
+	IPv6Addr   net.IP
 	Interface  string
 }
 
@@ -54,19 +54,34 @@ func (msg *MNDPMessage) IsResponse() bool {
 
 // Unpack turns a MNDP message into a MNDPResponse
 func (msg *MNDPMessage) Unpack() MNDPResponse {
-	return MNDPResponse{
-		msg.src,
-		strings.Split(msg.tlvs[0].String(), " ")[1],
-		strings.Split(msg.tlvs[1].String(), " ")[1],
-		strings.Split(msg.tlvs[2].String(), " ")[1],
-		strings.Split(msg.tlvs[3].String(), " ")[1],
-		strings.Split(msg.tlvs[4].String(), " ")[1],
-		strings.Split(msg.tlvs[5].String(), " ")[1],
-		strings.Split(msg.tlvs[6].String(), " ")[1],
-		strings.Split(msg.tlvs[7].String(), " ")[1],
-		strings.Split(msg.tlvs[8].String(), " ")[1],
-		strings.Split(msg.tlvs[9].String(), " ")[1],
+	response := MNDPResponse{}
+	response.Src = net.ParseIP(strings.Split(msg.src, ":")[0])
+	for _, tlv := range msg.tlvs {
+		switch tlv.typeTag {
+		case mndpMACAddr:
+			response.MACAddr = net.HardwareAddr(tlv.value)
+		case mndpIdentity:
+			response.Identity = string(tlv.value)
+		case mndpVersion:
+			response.Version = string(tlv.value)
+		case mndpPlatform:
+			response.Platform = string(tlv.value)
+		case mndpUptime:
+			response.Uptime = (time.Duration(binary.LittleEndian.Uint32(tlv.value)) * time.Second)
+		case mndpSoftwareID:
+			response.SoftwareID = string(tlv.value)
+		case mndpBoard:
+			response.Board = string(tlv.value)
+		case mndpUnpack:
+			response.Unpack = fmt.Sprint(tlv.value[0])
+		case mndpIPv6Addr:
+			response.IPv6Addr = net.IP(tlv.value)
+		case mndpInterfaceName:
+			response.Interface = string(tlv.value)
+		}
 	}
+
+	return response
 }
 
 // MNDPMessage ...
